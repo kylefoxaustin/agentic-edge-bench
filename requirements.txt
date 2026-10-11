@@ -1,0 +1,7 @@
+# Core demo (x86_demo.py) — the only hard dependency:
+llama-cpp-python>=0.3.0
+huggingface_hub>=0.23.0
+
+# Optional: the two-judge accuracy grader (needs API keys; the benchmark itself does not)
+anthropic>=0.40.0
+openai>=1.40.0

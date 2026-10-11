@@ -1,0 +1,31 @@
+{
+  "board": "localhost-x86",
+  "backend": "cpu-llamacpp",
+  "model": "qwen2.5-3b",
+  "gate": {
+    "runnable": true,
+    "reason": "fits: needs ~3.5 GB, box has 101.0 GB"
+  },
+  "host": {
+    "os": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+    "cpu": "Intel(R) Core(TM) i9-14900KF",
+    "ram_gb": 101.0,
+    "logical_cores": 32,
+    "threads": 16,
+    "simd": "AVX2, AVX, FMA, F16C"
+  },
+  "result": {
+    "prefill_tok_s": 226.3,
+    "decode_tok_s": 32.53,
+    "n_prompt_tokens": 512,
+    "reps": 3,
+    "load_s": 1.2,
+    "eff_bandwidth_gbps": 65.1,
+    "eff_bandwidth_prov": "DERIVED = decode_tok/s x weights_bytes",
+    "ddr_peak_gbps": 89.6,
+    "ddr_peak_prov": "SOURCED (user-supplied)",
+    "ddr_bandwidth_util_pct": 72.7,
+    "backend": "cpu-llamacpp",
+    "model": "qwen2.5-3b"
+  }
+}

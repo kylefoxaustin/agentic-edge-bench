@@ -1,0 +1,19 @@
+# models are large and self-downloaded on demand
+models/
+*.gguf
+*.dvm
+*.bin
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# API keys live OUTSIDE the repo (~/.agentic-edge-bench/keys.env); never commit any
+keys.env
+*.key
+.env
+
+# OS
+.DS_Store
