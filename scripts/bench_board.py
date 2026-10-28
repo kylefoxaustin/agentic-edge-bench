@@ -165,7 +165,9 @@ def main():
     _write(rec)
 
 def _write(rec):
-    p = os.path.join(OUT, f"{rec['board']}.json")
+    # A provisioned model gets its own file (thor@qwen2.5-14b.json) so it never overwrites the board's 7B rung.
+    alias = (rec.get("provision") or {}).get("model")
+    p = os.path.join(OUT, f"{rec['board']}@{alias}.json" if alias else f"{rec['board']}.json")
     json.dump(rec, open(p, "w"), indent=2)
     print(f"  wrote {p}")
 

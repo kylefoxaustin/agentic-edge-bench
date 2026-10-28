@@ -21,14 +21,17 @@ def load():
 def main():
     runs = load()
     rows = []
-    for b in ORDER:
+    # each board's default rung (<board>.json), then any provisioned models (<board>@<alias>.json)
+    keys = [k for b in ORDER for k in [b] + sorted(x for x in runs if x.startswith(b + "@"))]
+    for b in keys:
         r = runs.get(b)
         if not r: continue
         res = r.get("result", {})
-        # model size label: explicit result.model (x86 demo) > live-run model (imx95-ara 3B) > 7B default
-        model = res.get("model") or (res.get("live") or {}).get("model", "7B")
+        # model size label: explicit result.model (x86 demo) > provisioned model > live-run model (imx95-ara 3B) > 7B default
+        model = (res.get("model") or (r.get("provision") or {}).get("model")
+                 or (res.get("live") or {}).get("model", "7B"))
         model = "3B" if "3b" in str(model).lower() else ("14B" if "14b" in str(model).lower() else "7B")
-        rows.append((b, model, res.get("decode_tok_s"), res.get("prefill_tok_s"),
+        rows.append((b.split("@")[0], model, res.get("decode_tok_s"), res.get("prefill_tok_s"),
                      res.get("backend", r.get("backend")),
                      res.get("decode_prov", "MEASURED" if r.get("backend","").startswith(("cuda","cpu")) else "")))
     print(f"\n{'board':12s} {'model':5s} {'decode t/s':>10s} {'prefill t/s':>11s}  {'backend':14s} provenance")

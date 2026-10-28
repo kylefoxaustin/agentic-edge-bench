@@ -2,19 +2,15 @@
   "board": "orin",
   "res": "orin",
   "backend": "cuda",
-  "provision": {
-    "model": "qwen2.5-14b",
-    "gate": "fits: ~12 GB of 61 GB; llama.cpp-cuda supports qwen2"
-  },
   "census": {
     "heavy_procs": [],
-    "loadavg": "0.00 0.00 0.00",
+    "loadavg": "0.24 0.05 0.02",
     "note": "busy = a name-matched process using >15% CPU (idle daemons ignored)"
   },
-  "model_staged": "provisioned:qwen2.5-14b",
+  "model_staged": "staged",
   "result": {
-    "prefill_tok_s": 527.48,
-    "decode_tok_s": 14.54,
+    "prefill_tok_s": 1074.38,
+    "decode_tok_s": 27.76,
     "binary": "~/llama.cpp/build-fix/bin/llama-bench",
     "backend": "cuda"
   }

@@ -91,10 +91,19 @@ def peak_ddr_gbps():
             if n:
                 return round(n * speeds[0] * 8 / 1000, 1), f"{n} channel(s) x {speeds[0]} MT/s x 8B (dmidecode)"
         if sysname == "Windows":
-            r = subprocess.run(["wmic", "memorychip", "get", "Speed"], capture_output=True, text=True, timeout=10)
-            speeds = [int(x) for x in re.findall(r"(\d+)", r.stdout)]
-            if speeds:
-                return round(len(speeds) * speeds[0] * 8 / 1000, 1), f"{len(speeds)} DIMM(s) x {speeds[0]} MT/s x 8B (wmic)"
+            # PowerShell CIM first: wmic is deprecated and is gone from Windows 11 24H2+.
+            ps = ("Get-CimInstance Win32_PhysicalMemory | ForEach-Object "
+                  "{ if ($_.ConfiguredClockSpeed) { $_.ConfiguredClockSpeed } else { $_.Speed } }")
+            for cmd, tool in ((["powershell", "-NoProfile", "-Command", ps], "PowerShell CIM"),
+                              (["wmic", "memorychip", "get", "Speed"], "wmic")):
+                try:
+                    r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+                except (OSError, subprocess.SubprocessError):
+                    continue
+                speeds = [int(x) for x in re.findall(r"(\d+)", r.stdout) if int(x) > 0]
+                if speeds:
+                    return (round(len(speeds) * speeds[0] * 8 / 1000, 1),
+                            f"{len(speeds)} DIMM(s) x {speeds[0]} MT/s x 8B ({tool}; assumes 1 DIMM/channel)")
     except Exception as e:
         return None, f"auto-detect failed ({type(e).__name__})"
     return None, "DIMM speed not detectable — pass --ddr-gbps for the util%"
@@ -112,7 +121,7 @@ def default_threads():
 
 # ---------- model + gate ----------
 def load_model_spec(alias):
-    reg = json.load(open(REGISTRY))
+    reg = json.load(open(REGISTRY, encoding="utf-8"))
     key = {"3b": "qwen2.5-3b", "7b": "qwen2.5-7b", "14b": "qwen2.5-14b"}.get(alias, alias)
     if key not in reg["models"]:
         sys.exit(f"unknown model '{alias}' — choose one of: 3b, 7b, 14b")
@@ -135,7 +144,7 @@ FACTS = ("NXP i.MX 95: 6x Arm Cortex-A55 + a Cortex-M33 + a Cortex-M7; eIQ Neutr
 
 def _notes():
     try:
-        return open(os.path.join(REPO, "scripts/agentic_bench/sample_notes.txt")).read()
+        return open(os.path.join(REPO, "scripts/agentic_bench/sample_notes.txt"), encoding="utf-8").read()
     except Exception:
         return FACTS
 
@@ -155,11 +164,14 @@ QUICK_TASKS = [
 def load_llm(repo_id, filename, n_threads):
     try:
         from llama_cpp import Llama
-    except ImportError:
-        sys.exit("llama-cpp-python is not installed.\n"
-                 "  Linux/WSL2:  pip install llama-cpp-python\n"
-                 "  Windows:     pip install llama-cpp-python   (needs VS Build Tools, or use a prebuilt CPU wheel)\n"
-                 "  See docs/RUN_X86_DEMO.md for the one-liner install.")
+        import huggingface_hub  # noqa: F401  (Llama.from_pretrained needs it; not a llama-cpp dependency)
+    except ImportError as e:
+        sys.exit(f"missing package: {e.name}  ({e})\n"
+                 f"  this interpreter: {sys.executable}  (install into THIS one: <it> -m pip install ...)\n"
+                 "  Linux/WSL2:  pip install llama-cpp-python huggingface-hub\n"
+                 "  Windows:     pip install --prefer-binary llama-cpp-python huggingface-hub "
+                 "--extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu\n"
+                 "  See docs/RUN_X86_DEMO.md.")
     print(f"  loading {repo_id} :: {filename}  (CPU, {n_threads} threads)…")
     t0 = time.time()
     llm = Llama.from_pretrained(repo_id=repo_id, filename=filename, n_ctx=2048,
@@ -228,6 +240,14 @@ def run_quick_tasks(llm, rates):
 
 
 def main():
+    # Windows consoles/pipes can be cp1252: never crash printing model output.
+    # Piped/redirected output is written as UTF-8 so logs and files don't mangle the dashes.
+    for st in (sys.stdout, sys.stderr):
+        try:
+            st.reconfigure(errors="replace")
+            if os.name == "nt" and not st.isatty():
+                st.reconfigure(encoding="utf-8")
+        except Exception: pass
     ap = argparse.ArgumentParser(description="x86/AMD pure-CPU decode-ladder demo")
     ap.add_argument("--model", default="3b", help="3b (default) | 7b | 14b")
     ap.add_argument("--threads", type=int, default=None, help="CPU threads (default: physical-core-ish)")
@@ -257,7 +277,8 @@ def main():
                "host": {"os": platform.platform(), "cpu": cpu, "ram_gb": ram, "threads": threads}}
         _write(rec); sys.exit(2)
 
-    llm, load_s = load_llm(spec["hf_repo"], spec["glob"], threads)
+    # Single-file mirror where the official repo splits the GGUF (7B, 14B): from_pretrained needs one file.
+    llm, load_s = load_llm(spec.get("demo_hf_repo", spec["hf_repo"]), spec.get("demo_file", spec["glob"]), threads)
     res = bench_decode(llm, a.reps)
     res["load_s"] = load_s
 
@@ -300,7 +321,8 @@ def main():
 def _write(rec):
     os.makedirs(OUT, exist_ok=True)
     p = os.path.join(OUT, "localhost-x86.json")
-    json.dump(rec, open(p, "w"), indent=2)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(rec, f, indent=2)
     print(f"  wrote {os.path.relpath(p, REPO)}")
 
 

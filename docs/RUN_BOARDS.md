@@ -57,7 +57,8 @@ python3 scripts/bench_board.py mybox --provision qwen2.5-7b   # gate + provision
 python3 scripts/bench_board.py orin --rebuild                  # rebuild llama.cpp if it segfaults (driver drift)
 ```
 
-Each run writes `eval/results/ladder/board_runs/<board>.json` with decode/prefill tok/s, a census
+Each run writes `eval/results/ladder/board_runs/<board>.json` (or `<board>@<model>.json` with
+`--provision`, so a 14B run never overwrites the 7B rung) with decode/prefill tok/s, a census
 (was anything else hammering the board?), and the backend. **Read it** — apply the coherence gate:
 a broken or truncated output is a cheaper, unrepresentative computation, so its numbers don't count.
 

@@ -12,19 +12,24 @@ Works on **Linux** (native) and **Windows** (native or WSL2). Intel or AMD x86. 
 
 ## 1. Install (one wheel)
 
-You need Python 3.9+ and `llama-cpp-python` (the same CPU runtime the project uses). No CUDA.
+You need Python 3.9+, `llama-cpp-python` (the same CPU runtime the project uses), and
+`huggingface-hub` (used to download the model). No CUDA.
 
 **Linux / WSL2:**
 ```bash
-pip install llama-cpp-python
+pip install llama-cpp-python huggingface-hub
 ```
 
-**Windows (native):** easiest is a prebuilt CPU wheel (no compiler needed):
+**Windows (native, PowerShell):** use the prebuilt CPU wheel so no compiler is needed:
 ```powershell
-pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+py -m pip install --prefer-binary llama-cpp-python huggingface-hub --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 ```
-(If you prefer to build from source on Windows you'll need the "Desktop development with C++"
-Visual Studio Build Tools. The prebuilt wheel above skips that.)
+`--prefer-binary` matters. Without it, pip may pick a newer source release from PyPI and try to
+compile it. That needs the Visual Studio "Desktop development with C++" Build Tools and CMake,
+and it fails with a long CMake error when they are missing.
+
+Get Python from python.org (tick "Add python.exe to PATH") or `winget install Python.Python.3.12`.
+On Windows, `python3` often opens the Microsoft Store stub. Use `py` or `python` instead.
 
 > **Windows tip:** WSL2 (Ubuntu) is the smoothest path and matches the Linux instructions exactly.
 > Native Windows works too via the prebuilt wheel.
@@ -32,7 +37,10 @@ Visual Studio Build Tools. The prebuilt wheel above skips that.)
 ## 2. Run
 
 ```bash
-python3 scripts/x86_demo.py                 # default: Qwen2.5-3B (2 GB, laptop-friendly)
+python3 scripts/x86_demo.py                 # Linux/WSL2. Default: Qwen2.5-3B (2 GB, laptop-friendly)
+```
+```powershell
+py scripts\x86_demo.py                      # Windows (PowerShell or cmd), same flags
 ```
 
 That's it. The script self-downloads the GGUF from Hugging Face on first run (cached afterward),
@@ -130,10 +138,18 @@ harness (RAG / ASR / OCR / web / tool-chains) is out of scope for this repo — 
 LLM server and a vector DB.
 
 ## Troubleshooting
-- **`llama-cpp-python is not installed`** — see step 1. On Windows use the prebuilt-wheel index.
+- **`missing package: llama_cpp` / `huggingface_hub`** — see step 1. On Windows use the
+  prebuilt-wheel index with `--prefer-binary`.
+- **Windows: `DLL load failed` importing llama_cpp** — install the Microsoft Visual C++
+  Redistributable (x64), then reopen the terminal.
+- **Windows: symlink warning from huggingface_hub** — harmless. The cache copies the file instead
+  of symlinking it. Enable Developer Mode to silence it.
 - **`UNRUNNABLE — won't fit`** — the model is bigger than your free RAM. Use `--model 3b` (default)
   or close other apps. The gate refuses rather than thrash swap.
-- **`DDR peak: unknown`** — auto-detect needs `sudo dmidecode` (Linux) or `wmic` (Windows). Pass
+- **`DDR peak: unknown`** — auto-detect needs `sudo dmidecode` (Linux) or PowerShell's
+  `Get-CimInstance Win32_PhysicalMemory` (Windows; falls back to `wmic` on old builds). It counts
+  DIMMs as channels, so a 4-DIMM dual-channel desktop reads 2x too high, and soldered LPDDR laptops
+  can misreport. Pass
   `--ddr-gbps <peak>` to get the util% (peak = channels × MT/s × 8 ÷ 1000; e.g. dual-channel
   DDR5-5600 = 2×5600×8÷1000 ≈ 89.6 GB/s).
 - **Download is slow / offline** — the GGUF comes from Hugging Face on first run and is cached. On
